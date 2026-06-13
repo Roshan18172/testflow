@@ -6,6 +6,7 @@ export default function TestResult() {
   const location = useLocation();
   const { test, result } = location.state || {};
   const r = result || sampleResult;
+  document.title = "Test Result - TestFlow";
 
   return (
     <div className="result-page">

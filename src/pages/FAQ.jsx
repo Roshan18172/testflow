@@ -80,6 +80,7 @@ const faqData = [
 
 export default function FAQ() {
   const [active, setActive] = useState(null);
+    document.title = "FAQ - TestFlow";
 
   const toggleFAQ = (index) => {
     setActive(active === index ? null : index);

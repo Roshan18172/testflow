@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Home() {
   const navigate = useNavigate();
   const featuredTests = tests.slice(0, 3);
+  document.title = "Home - TestFlow";
 
   return (
     <div className="home-page">

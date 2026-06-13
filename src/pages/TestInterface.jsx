@@ -63,6 +63,7 @@ const { test, mode } = location.state || {};
     if (i < current) return "visited";
     return "unanswered";
   };
+  document.title = `${test.title} - TestFlow`;
 
   return (
     <div className="test-interface">

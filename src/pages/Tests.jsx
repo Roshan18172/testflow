@@ -12,6 +12,7 @@ export default function Tests() {
   const [durFilter, setDurFilter] = useState("All Duration");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(4);
+  document.title = "Tests - TestFlow";
 
   const filtered = tests.filter((t) => {
     const matchCat = catFilter === "All Categories" || t.category === catFilter;
