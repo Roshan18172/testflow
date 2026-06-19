@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import SetuLogo from "../SetuLearn Logo.png"
+// import SetuLogo from "../SetuLearn Logo.png"
 
 export default function Navbar() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -13,7 +13,7 @@ export default function Navbar() {
       <div className="navbar-inner">
 
         <div className="navbar-brand" onClick={() => navigate("/")} style={{ cursor: "pointer" }} >
-          <div className="brand-icon"><img src={SetuLogo} alt="SetuLearn" /></div>
+          <img src="/SetuLearn-Logo-new.jpg" alt="SetuLearn" />
         </div>
 
         <div className={`navbar-links ${menuOpen ? "open" : ""}`}>

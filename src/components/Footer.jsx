@@ -1,5 +1,5 @@
 import {useNavigate} from "react-router-dom";
-import Setulogo from "../SetuLearn Logo.png";
+// import Setulogo from "../SetuLearn Logo.png";
 
 export default function Footer() {
   const navigate = useNavigate();
@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="footer-brand">
           <div className="footer-logo">
             <div className="brand-icon">
-              <img src={Setulogo} alt="SetuLearn Logo" />
+              <img src="/SetuLearn-Logo-footer.png" height={48} width={"auto"} alt="SetuLearn Logo" />
             </div>
           </div>
           <p className="footer-tagline">
