@@ -1,17 +1,54 @@
-import { useState } from "react";
-import { tests, categories } from "../data/demoData";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import examService from "../api/examService";
+import { mapExamToCategory, mapTestToFrontend } from "../api/dataMapper";
+import { getErrorMessage } from "../api/apiErrorHandler";
+
 const difficulties = ["All Difficulty", "Easy", "Medium", "Hard"];
 const durations = ["All Duration", "< 60 Mins", "60-120 Mins", "> 120 Mins"];
 
 export default function Tests() {
   const navigate = useNavigate();
+  const [categories, setCategories] = useState([]);
+  const [tests, setTests] = useState([]);
+  const [fetchError, setFetchError] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [catFilter, setCatFilter] = useState("All Categories");
   const [diffFilter, setDiffFilter] = useState("All Difficulty");
   const [durFilter, setDurFilter] = useState("All Duration");
   const [search, setSearch] = useState("");
   const [visible, setVisible] = useState(4);
-  document.title = "Tests - SetuLearn";
+
+  useEffect(() => {
+    document.title = "Tests - SetuLearn";
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      setFetchError(null);
+      try {
+        const [exams, allTests] = await Promise.all([
+          examService.getExams(),
+          examService.getAllTests(),
+        ]);
+
+        setCategories(exams.map((e) => mapExamToCategory(e)));
+
+        const mapped = allTests.map((t) =>
+          mapTestToFrontend(t, t.exam?.name || "")
+        );
+        setTests(mapped);
+      } catch (err) {
+        const message = getErrorMessage(err, "Could not load tests. Please ensure the backend is running.");
+        console.error("Failed to fetch tests:", err);
+        setFetchError(message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const filtered = tests.filter((t) => {
     const matchCat = catFilter === "All Categories" || t.category === catFilter;
@@ -27,6 +64,41 @@ export default function Tests() {
       t.exam.toLowerCase().includes(search.toLowerCase());
     return matchCat && matchDiff && matchDur && matchSearch;
   });
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="tests-page">
+        <div className="tests-header">
+          <h1>All Tests</h1>
+        </div>
+        <div className="empty-state" style={{ padding: "80px 20px" }}>
+          <div className="empty-icon">⏳</div>
+          <h3>Loading tests...</h3>
+          <p>Please wait while we fetch the available tests.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state with retry
+  if (fetchError) {
+    return (
+      <div className="tests-page">
+        <div className="tests-header">
+          <h1>All Tests</h1>
+        </div>
+        <div className="empty-state" style={{ padding: "80px 20px" }}>
+          <div className="empty-icon">⚠️</div>
+          <h3>Could not load tests</h3>
+          <p style={{ maxWidth: 500, margin: "0 auto 20px" }}>{fetchError}</p>
+          <button className="btn-primary" onClick={() => window.location.reload()}>
+            🔄 Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="tests-page">

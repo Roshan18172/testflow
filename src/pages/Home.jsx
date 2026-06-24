@@ -1,16 +1,46 @@
-import { categories, tests } from "../data/demoData";
-import {
-  ClipboardCheck,
-  CreditCardSlash,
-  Group,
-} from "iconoir-react";
-
+import { useState, useEffect } from "react";
+import { ClipboardCheck, CreditCardSlash, Group } from "iconoir-react";
 import { useNavigate } from "react-router-dom";
+import examService from "../api/examService";
+import { mapExamToCategory, mapTestToFrontend } from "../api/dataMapper";
+import { getErrorMessage } from "../api/apiErrorHandler";
 
 export default function Home() {
   const navigate = useNavigate();
-  const featuredTests = tests.slice(0, 3);
-  document.title = "Home - SetuLearn";
+  const [categories, setCategories] = useState([]);
+  const [featuredTests, setFeaturedTests] = useState([]);
+
+  useEffect(() => {
+    document.title = "Home - SetuLearn";
+  }, []);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [exams, tests] = await Promise.all([
+          examService.getExams(),
+          examService.getAllTests(),
+        ]);
+
+        const mappedCategories = exams.map((exam) => {
+          const cat = mapExamToCategory(exam);
+          cat.tests = tests.filter((t) => t.exam?.id === exam.id || t.examId === exam.id).length;
+          cat.exams = [exam.name];
+          return cat;
+        });
+
+        const mappedTests = tests.map((t) =>
+          mapTestToFrontend(t, t.exam?.name || "")
+        );
+
+        setCategories(mappedCategories);
+        setFeaturedTests(mappedTests.slice(0, 3));
+      } catch (err) {
+        console.error("Failed to fetch home data:", getErrorMessage(err, "Could not load test data. Please make sure the backend is running."));
+      }
+    };
+    fetchData();
+  }, []);
 
   const lastExam = JSON.parse(localStorage.getItem("lastexam")) || {};
   const lastExamTitle = lastExam.testTitle || "N/A";
@@ -31,62 +61,64 @@ export default function Home() {
     <div className="home-page">
       {/* Hero */}
       <section className="hero">
-        <div className="hero-content">
-          <div className="hero-badge">
-            🎯 India's #1 Free Mock Test Platform
-          </div>
-          <h1 className="hero-title">
-            Practice. Improve.
-            <br />
-            <span className="hero-accent">Succeed.</span>
-          </h1>
-          <p className="hero-desc">
-            Explore and attempt mock tests for various government and college
-            entrance exams. Real exam patterns, instant results, detailed
-            analytics — all free.
-          </p>
-          <div className="hero-actions">
-            <button
-              className="btn-primary btn-lg"
-              onClick={() => navigate("/tests")}
-            >
-              Browse All Tests
-            </button>
-            <button
-              className="btn-outline btn-lg"
-              onClick={() => navigate("/tests")}
-            >
-              View Categories
-            </button>
-          </div>
-          <div className="hero-stats">
-            <div className="hstat">
-              <ClipboardCheck color="#5A1EAD" width={32} height={32} />
-              <div>
-                <h3>45+</h3>
-                <span>Mock Tests</span>
+        <div className="hero-section">
+          <div className="hero-content">
+            <div className="hero-badge">
+              🎯 India's #1 Free Mock Test Platform
+            </div>
+            <h1 className="hero-title">
+              Practice. Improve.
+              <br />
+              <span className="hero-accent">Succeed.</span>
+            </h1>
+            <p className="hero-desc">
+              Explore and attempt mock tests for various government and college
+              entrance exams. Real exam patterns, instant results, detailed
+              analytics — all free.
+            </p>
+            <div className="hero-actions">
+              <button
+                className="btn-primary btn-lg"
+                onClick={() => navigate("/tests")}
+              >
+                Browse All Tests
+              </button>
+              <button
+                className="btn-outline btn-lg"
+                onClick={() => navigate("/tests")}
+              >
+                View Categories
+              </button>
+            </div>
+            <div className="hero-stats">
+              <div className="hstat">
+                <ClipboardCheck color="#5A1EAD" width={32} height={32} />
+                <div>
+                  <h3>45+</h3>
+                  <span>Mock Tests</span>
+                </div>
+              </div>
+              <div className="hstat-div" />
+              <div className="hstat">
+                <Group color="#5A1EAD" height={32} width={32} />
+                <div>
+                  <h3>20K+</h3>
+                  <span>Students</span>
+                </div>
+              </div>
+              <div className="hstat-div" />
+              <div className="hstat">
+                <CreditCardSlash color="#5A1EAD" width={32} height={32} />
+                <div>
+                  <h3>Free</h3>
+                  <span>No Sign-up</span>
+                </div>
               </div>
             </div>
-            <div className="hstat-div" />
-            <div className="hstat">
-              <Group color="#5A1EAD" height={32} width={32} />
-              <div>
-                <h3>20K+</h3>
-                <span>Students</span>
-              </div>
-            </div>
-            <div className="hstat-div" />
-            <div className="hstat">
-              <CreditCardSlash color="#5A1EAD" width={32} height={32} />
-              <div>
-                <h3>Free</h3>
-                <span>No Sign-up</span>
-              </div>
-            </div>
           </div>
-        </div>
-        <div className="hero-visual">
-          <img src="/img/hero-image.png" alt="Mock Test Illustration" />
+          <div className="hero-visual">
+            <img src="/img/hero-image.png" alt="Mock Test Illustration" />
+          </div>
         </div>
       </section>
 
