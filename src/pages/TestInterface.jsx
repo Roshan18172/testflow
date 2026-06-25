@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
 function padTwo(n) {
@@ -10,6 +10,10 @@ function formatTime(secs) {
   const m = Math.floor((secs % 3600) / 60);
   const s = secs % 60;
   return `${padTwo(h)}:${padTwo(m)}:${padTwo(s)}`;
+}
+
+function pickFirstAnswerValue(...values) {
+  return values.find((value) => value !== undefined && value !== null && value !== "");
 }
 
 export default function TestInterface() {
@@ -27,11 +31,20 @@ export default function TestInterface() {
   const [submissionMap, setSubmissionMap] = useState({});
 
   const totalSecs = (test?.duration || 30) * 60;
+  const [timeLeft, setTimeLeft] = useState(totalSecs);
+  const timeSpentSeconds = totalSecs - timeLeft;
+
+  // Keep a ref that always holds the latest timeSpentSeconds.
+  // useCallback closures capture stale state, so reading from a ref
+  // ensures handleSubmit always submits the real elapsed time.
+  const timeSpentRef = useRef(timeSpentSeconds);
+  useEffect(() => {
+    timeSpentRef.current = timeSpentSeconds;
+  }, [timeSpentSeconds]);
 
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState({});
   const [marked, setMarked] = useState({});
-  const [timeLeft, setTimeLeft] = useState(totalSecs);
   const [showConfirm, setShowConfirm] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [showExitModal, setShowExitModal] = useState(false);
@@ -109,6 +122,16 @@ export default function TestInterface() {
                   internalSubmissionMapping[q.id] = currentSubTestSubmissionId;
                 }
 
+                const correctOptionId = pickFirstAnswerValue(
+                  q.correctOptionId,
+                  q.correctAnswerId,
+                  q.correct,
+                  q.answer,
+                  q.correctOption?.id,
+                  q.correctOption?.optionId,
+                  (q.options || []).find(opt => opt.isCorrect === true || opt.correct === true || opt.isCorrect === 1 || opt.correct === 1)?.id
+                );
+
                 return {
                   id: q.id,
                   subTestId: sub.id, // Save reference to the parenting sub-test
@@ -117,9 +140,16 @@ export default function TestInterface() {
                   negativeMarks: q.negativeMarks,
                   subjectId: q.subjectId,
                   topicId: q.topicId,
+                  // Preserve correct answer fields so DetailedAnalysis can look them up
+                  correct: correctOptionId,
+                  correctOptionId,
+                  correctOption: q.correctOption,
+                  correctOptionText: q.correctOptionText || q.correctAnswerText,
                   options: (q.options || []).map(opt => ({
                     id: opt.id,
-                    text: opt.optionText
+                    text: opt.optionText || opt.text,
+                    // Keep isCorrect flag if backend provides it per-option
+                    isCorrect: opt.isCorrect ?? opt.correct ?? false,
                   }))
                 };
               });
@@ -208,7 +238,7 @@ export default function TestInterface() {
       const finalMergedResultsArray = [];
 
       for (const subTestId of submissionTargets) {
-        const payload = submissionsGrouped[subTestId];
+        const payload = { ...submissionsGrouped[subTestId], timeSpent: timeSpentRef.current };
         console.log("Submitting payload structure:", payload);
 
         const response = await fetch(`https://setulearn-backend.onrender.com/api/v1/tests/${subTestId}/submit`, {
@@ -238,6 +268,7 @@ export default function TestInterface() {
           answers,
           questions,     // full question list for Question Analysis tab
           subjectsMap,   // id→name map for topic labels
+          timeSpent: timeSpentRef.current  // Always the real elapsed seconds, not stale closure
         }
       });
     } catch (err) {

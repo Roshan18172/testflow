@@ -143,9 +143,103 @@ function normalizeMetrics(result, metrics, test, routeTimeSpentSeconds) {
 }
 
 function getOptionText(options = [], optionId) {
-  if (!optionId) return "";
-  const option = options.find((item) => String(item.id ?? item.optionId) === String(optionId));
-  return option?.text || option?.optionText || option?.label || "";
+  if (!optionId || !options.length) return "";
+
+  // 1. Direct ID match (UUID or numeric id)
+  const byId = options.find((item) => String(item.id ?? item.optionId) === String(optionId));
+  if (byId) return byId.text || byId.optionText || byId.label || "";
+
+  // 2. Letter match — backend sometimes returns "A", "B", "C", "D"
+  const letterIndex = ["A", "B", "C", "D", "E"].indexOf(String(optionId).trim().toUpperCase());
+  if (letterIndex !== -1 && options[letterIndex]) {
+    return options[letterIndex].text || options[letterIndex].optionText || options[letterIndex].label || "";
+  }
+
+  // 3. Numeric index match — backend sometimes returns 0-based or 1-based index
+  const numIndex = parseInt(optionId, 10);
+  if (!isNaN(numIndex)) {
+    // Try 1-based first (most common in exam APIs), then 0-based
+    const byOneBased = options[numIndex - 1];
+    const byZeroBased = options[numIndex];
+    const hit = byOneBased || byZeroBased;
+    if (hit) return hit.text || hit.optionText || hit.label || "";
+  }
+
+  // 4. Direct text match — backend occasionally echoes back the option text itself as the "id"
+  const byText = options.find(
+    (item) => String(item.text || item.optionText || "").trim().toLowerCase() === String(optionId).trim().toLowerCase()
+  );
+  if (byText) return byText.text || byText.optionText || byText.label || "";
+
+  return "";
+}
+
+/**
+ * Extracts correct option text from a backend question/analysis item,
+ * trying every field shape the backend might use before falling back to ID lookup.
+ */
+function resolveCorrectOptionText(item = {}, question = {}, fullQuestion = {}, fullOptions = []) {
+  // 1. Backend explicitly returned the answer text
+  const explicitText = pickFirst(
+    item.correctOptionText,
+    item.correctAnswer,
+    item.correctAnswerText,
+    question.correctOptionText,
+    question.correctAnswerText,
+    fullQuestion.correctOptionText,
+    fullQuestion.correctAnswerText
+  );
+  if (explicitText) return explicitText;
+
+  // 2. Backend returned a nested correctOption object  { id, text } or { optionText }
+  const correctOptionObj =
+    item.correctOption || question.correctOption || fullQuestion.correctOption;
+  if (correctOptionObj && typeof correctOptionObj === "object") {
+    const nested = correctOptionObj.text || correctOptionObj.optionText || correctOptionObj.label;
+    if (nested) return nested;
+  }
+
+  // 3. isCorrect flag on individual options (very common pattern — backend marks each option)
+  //    Check both the fullQuestion options and item-level options
+  const allOptionSources = [fullOptions, fullQuestion.options || [], question.options || [], item.options || []];
+  for (const opts of allOptionSources) {
+    if (!Array.isArray(opts) || !opts.length) continue;
+    const flagged = opts.find((o) => o.isCorrect === true || o.correct === true || o.isCorrect === 1 || o.correct === 1);
+    if (flagged) return flagged.text || flagged.optionText || flagged.label || "";
+  }
+
+  // 4. Collect every candidate "correct" id field the backend might use
+  const correctId = pickFirst(
+    item.correctOptionId,
+    item.correctAnswerId,
+    item.correct,
+    item.answer,
+    correctOptionObj?.id ?? correctOptionObj?.optionId,
+    question.correctOptionId,
+    question.correct,
+    fullQuestion.correct,
+    fullQuestion.correctOptionId
+  );
+
+  if (correctId) {
+    const looked = getOptionText(fullOptions, correctId);
+    if (looked) return looked;
+    // If text lookup failed, surface the raw id so it's at least visible
+    return String(correctId);
+  }
+
+  // 5. Debug helper — logs the item shape once so you can identify the missing field
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("[DetailedAnalysis] Could not resolve correct answer for item:", {
+      itemKeys: Object.keys(item),
+      questionKeys: Object.keys(question),
+      fullQuestionKeys: Object.keys(fullQuestion),
+      fullOptionsCount: fullOptions.length,
+      sampleOption: fullOptions[0],
+    });
+  }
+
+  return "";
 }
 
 function hasActualAnswer(value) {
@@ -176,7 +270,8 @@ function normalizeBackendQuestion(item = {}, rowIndex, sectionName, answers = {}
     questionId ? answers[questionId] : undefined
   );
   const correctOptionId = pickFirst(
-    item.correctOptionId, item.correctAnswerId, item.correct,
+    item.correctOptionId, item.correctAnswerId, item.correct, item.answer,
+    item.correctOption?.id, item.correctOption?.optionId,
     question.correctOptionId, question.correct,
     fullQuestion.correct, fullQuestion.correctOptionId
   );
@@ -187,11 +282,8 @@ function normalizeBackendQuestion(item = {}, rowIndex, sectionName, answers = {}
     getOptionText(fullOptions, selectedOptionId)
   );
 
-  // Resolve correct answer text — try backend text first, then look up from full options
-  const correctOptionText = pickFirst(
-    item.correctOptionText, item.correctAnswer,
-    getOptionText(fullOptions, correctOptionId)
-  );
+  // Resolve correct answer text — use robust resolver that handles all backend shapes
+  const correctOptionText = resolveCorrectOptionText(item, question, fullQuestion, fullOptions);
 
   const attempted = item.attempted !== undefined
     ? Boolean(item.attempted)
@@ -216,8 +308,8 @@ function normalizeBackendQuestion(item = {}, rowIndex, sectionName, answers = {}
     topic: pickFirst(item.topicName, item.topic, question.topicName, question.topic, item.subjectName, fullQuestion.topic, sectionName),
     section: sectionName,
     selectedOptionText: attempted ? (selectedOptionText || selectedOptionId || "Answered") : "Not Attempted",
-    // Show the actual option text; fall back to option ID if text resolution failed
-    correctOptionText: correctOptionText || correctOptionId || "—",
+    // Correct option text resolved via resolveCorrectOptionText (handles all backend shapes)
+    correctOptionText: correctOptionText || "—",
     attempted, isCorrect, status,
     marks: toNumber(pickFirst(item.marksObtained, item.score, item.obtainedMarks), isCorrect ? toNumber(item.marks, 0) : 0),
     explanation: item.explanation || "",

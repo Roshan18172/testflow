@@ -31,7 +31,7 @@ export function calculateAggregatedResults(resultsData, test = {}) {
     const subCorrect = sub.correct ?? sub.correctAnswers ?? 0;
     const subIncorrect = sub.incorrect ?? sub.incorrectAnswers ?? 0;
     const subUnattempted = sub.unattempted ?? 0;
-    totalTimeSpent += (sub.timeSpent ?? 0);
+    totalTimeSpent += Number(sub.timeSpent ?? sub.timeSpentSeconds ?? 0);
 
     // Safely deduce question quantity per module context
     let subQuestionsCount = 0;
@@ -108,8 +108,8 @@ export function calculateAggregatedResults(resultsData, test = {}) {
   const hrs = Math.floor(totalTimeSpent / 3600);
   const mins = Math.floor((totalTimeSpent % 3600) / 60);
   const secs = totalTimeSpent % 60;
-  const formattedTime = hrs > 0 
-    ? `${hrs}h ${mins}m ${secs}s` 
+  const formattedTime = hrs > 0
+    ? `${hrs}h ${mins}m ${secs}s`
     : `${mins}m ${secs}s`;
 
   return {
@@ -125,6 +125,17 @@ export function calculateAggregatedResults(resultsData, test = {}) {
   };
 }
 
+function formatTime(secondsValue) {
+  const totalSeconds = Number(secondsValue) || 0;
+  const hrs = Math.floor(totalSeconds / 3600);
+  const mins = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m ${secs}s`;
+  }
+  return `${mins}m ${secs}s`;
+}
+
 export default function TestResult() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -136,12 +147,19 @@ export default function TestResult() {
     answers = {},
     questions = [],
     subjectsMap = {},
+    timeSpent: passedTimeSpent,
   } = location.state || {};
 
   document.title = "Test Performance Result - SetuLearn";
 
   // Parse and aggregate cross-sectional metrics seamlessly passing the test context
   const metrics = calculateAggregatedResults(result, test);
+  // calculateAggregatedResults sums sub.timeSpent from the backend per section.
+  // If the backend doesn't return per-section time, we fall back to the total
+  // timeSpentSeconds passed directly from TestInterface via location.state.
+  const aggregatedTime = metrics.timeSpent;
+  const hasAggregatedTime = aggregatedTime && aggregatedTime !== "00m 00s" && aggregatedTime !== "0m 0s";
+  const displayTime = hasAggregatedTime ? aggregatedTime : formatTime(passedTimeSpent || 0);
 
   // Sync aggregate summaries back into persistent storage for dashboard widgets
   try {
@@ -227,7 +245,7 @@ export default function TestResult() {
               </div>
               <div className="sce-item">
                 <div className="sce-label">Time Spent</div>
-                <div className="sce-val">⏱️ {metrics.timeSpent}</div>
+                <div className="sce-val">⏱️ {displayTime}</div>
               </div>
               <div className="sce-item">
                 <div className="sce-label">Overall Accuracy</div>
@@ -285,10 +303,10 @@ export default function TestResult() {
           <button className="btn-outline" onClick={() => navigate("/instructions", { state: { test, mode: "timed" } })}>
             🔄 Retake Test
           </button>
-          <button className="btn-primary" onClick={() => navigate("/analysis", { state: { test, result, answers, metrics, questions, subjectsMap } })}>
+          <button className="btn-primary" onClick={() => navigate("/analysis", { state: { test, result, answers, metrics, questions, subjectsMap, timeSpentSeconds: passedTimeSpent || 0 } })}>
             📊 View Detailed Analysis
           </button>
-          <button className="btn-primary" onClick={() => navigate("/solutions", { state: { test, answers, result } })}>
+          <button className="btn-primary" onClick={() => navigate("/solutions", { state: { test, answers, questions, result } })}>
             📖 View Solutions
           </button>
           <button className="btn-outline" onClick={() => navigate("/tests")}>

@@ -3273,3 +3273,24 @@ html::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.2);
   color: #64748b;
 }
+
+.option-item {
+  padding: 12px;
+  border: 1px solid #ddd;
+  margin: 5px 0;
+  border-radius: 4px;
+}
+
+/* Green for the correct answer */
+.correct-answer {
+  background-color: #d4edda !important; 
+  border-color: #28a745 !important;
+  color: #155724 !important;
+}
+
+/* Red for the incorrect user selection */
+.wrong-answer {
+  background-color: #f8d7da !important;
+  border-color: #dc3545 !important;
+  color: #721c24 !important;
+}

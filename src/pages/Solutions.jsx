@@ -1,13 +1,14 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { questionBank } from "../data/demoData";
 
 export default function Solutions() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const { test } = location.state || {};
+  // 1. Destructure 'questions' directly from state
+  const { test, answers = {}, questions = [] } = location.state || {};
 
-  if (!test) {
+  // 2. Guard clause: check if questions exist
+  if (!test || !questions || questions.length === 0) {
     return (
       <div className="empty-state">
         <h2>No Solutions Found</h2>
@@ -15,47 +16,49 @@ export default function Solutions() {
       </div>
     );
   }
-
-  const questions = questionBank[test.id] || [];
-
-  document.title = `${test.title} Solutions - SetuLearn`;
+  console.log("Solutions Page State:", { test, answers, questions });
+  document.title = `${test.title || "Exam"} Solutions - SetuLearn`;
 
   return (
     <div className="solution-page">
-      {/* Header */}
       <div className="solution-header">
         <button className="btn-outline" onClick={() => navigate(-1)} > ← Back </button>
-        <h1>{test.title} - Solutions</h1>
+        <h1>{test.title || "Exam"} - Solutions</h1>
       </div>
 
-      {/* Questions */}
-      {questions.map((q, index) => (
-        <div key={q.id} className="solution-card" >
-          <h3 className="solution-question">
-            Q{index + 1}. {q.text}
-          </h3>
+      {/* 3. Map over the 'questions' array directly */}
+      {questions.map((q, index) => {
+        const userSelectedId = answers[q.id];
 
-          <div className="solution-options">
-            {q.options.map((opt) => (
-              <div key={opt.id}
-                className={`option-item ${
-                  opt.id === q.correct
-                    ? "correct-answer"
-                    : ""
-                }`}
-              >
-                {opt.text}
+        return (
+          <div key={q.id} className="solution-card">
+            <h3 className="solution-question">
+              Q{index + 1}. {q.text}
+            </h3>
 
-                {opt.id === q.correct && (
-                  <span className="correct-badge">
-                    ✓ Correct Answer
-                  </span>
-                )}
-              </div>
-            ))}
+            <div className="solution-options">
+              {q.options.map((opt) => {
+
+                // FIX: Coerce both to String to avoid type mismatch (e.g., 1 vs "1")
+                const isCorrect = String(opt.id) === String(q.correct);
+                const isSelected = String(opt.id) === String(userSelectedId);
+
+                let className = "option-item";
+                if (isCorrect) className += " correct-answer";
+                else if (isSelected && !isCorrect) className += " wrong-answer";
+
+                return (
+                  <div key={opt.id} className={className}>
+                    {opt.text}
+                    {isCorrect && <span className="correct-badge">✓ Correct</span>}
+                    {isSelected && !isCorrect && <span className="wrong-badge">✗ Your Answer</span>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
