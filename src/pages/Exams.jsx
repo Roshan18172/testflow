@@ -19,6 +19,7 @@ export default function Exams() {
     const fetchData = async () => {
       try {
         setIsLoading(false)
+        setFetchError(null)
 
         const [exams, tests] = await Promise.all([
           examService.getExams(),
@@ -36,6 +37,7 @@ export default function Exams() {
         setCategories(mappedCategories);
       } catch (err) {
         console.error("Failed to fetch home data:", getErrorMessage(err, "Could not load test data. Please make sure the backend is running."));
+        setFetchError("Failed to load exam data. Please try again.");
       }
     };
     fetchData();
