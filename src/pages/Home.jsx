@@ -138,7 +138,13 @@ export default function Home() {
             <div
               key={cat.id}
               className="category-card"
-              onClick={() => navigate("/tests")}
+              onClick={() =>
+                navigate("/tests", {
+                  state: {
+                    selectedExam: cat.name,
+                  },
+                })
+              }
               style={{ "--cat-color": cat.color }}
             >
               <div className="cat-icon">
