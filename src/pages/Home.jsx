@@ -33,7 +33,7 @@ export default function Home() {
           mapTestToFrontend(t, t.exam?.name || "")
         );
 
-        setCategories(mappedCategories);
+        setCategories(mappedCategories.slice(0, 4));
         setFeaturedTests(mappedTests.slice(0, 3));
       } catch (err) {
         console.error("Failed to fetch home data:", getErrorMessage(err, "Could not load test data. Please make sure the backend is running."));
@@ -129,7 +129,7 @@ export default function Home() {
             <div className="section-eyebrow">Explore by Category</div>
             <h2 className="section-title">Popular Exam Categories</h2>
           </div>
-          <button className="btn-text" onClick={() => navigate("/tests")}>
+          <button className="btn-text" onClick={() => navigate("/exams")}>
             View All →
           </button>
         </div>
@@ -143,7 +143,7 @@ export default function Home() {
             >
               <div className="cat-icon">
                 <img
-                  src={cat.icon}
+                  src={`${cat.icon}`}
                   alt={`${cat.name}-icon`}
                   width={96}
                   height={96}

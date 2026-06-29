@@ -277,6 +277,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 18px;
 }
+.all-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 18px;
+}
 .category-card {
   background: var(--surface);
   border: 1px solid var(--border);

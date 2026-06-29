@@ -5,6 +5,7 @@ import Footer from "./components/Footer";
 import ScrollToTop from "./components/ScrollToTop";
 
 import Home from "./pages/Home";
+import Exams from "./pages/Exams";
 import Tests from "./pages/Tests";
 import TestInstructions from "./pages/TestInstructions";
 import TestInterface from "./pages/TestInterface";
@@ -38,6 +39,7 @@ function App() {
         <ScrollToTop />
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/exams" element={<Exams />} />
           <Route path="/tests" element={<Tests />} />
           <Route path="/instructions" element={<TestInstructions />} />
           <Route path="/test" element={<TestInterface />} />
