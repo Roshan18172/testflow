@@ -27,15 +27,15 @@ export default function Tests() {
 
   document.title = "Tests - SetuLearn";
   useEffect(() => {
-  if (location.state?.selectedExam) {
-    setExamFilter(location.state.selectedExam);
+    if (location.state?.selectedExam) {
+      setExamFilter(location.state.selectedExam);
 
-    navigate(location.pathname, {
-      replace: true,
-      state: {},
-    });
-  }
-}, [location.state, navigate, location.pathname]);
+      navigate(location.pathname, {
+        replace: true,
+        state: {},
+      });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -181,13 +181,14 @@ export default function Tests() {
       {/* Tests list */}
       <div className="tests-list-page">
         {filtered.slice(0, visible).map((test) => {
-          const catColor =
-            categories.find((c) => c.name === test.exam)?.color || "#6C63FF";
+          const category = categories.find((c) => c.name === test.exam);
+          const catColor = category?.color || "#6C63FF";
+          const catIcon = category?.icon || "/icons/default.png";
           return (
             <div key={test.id} className="test-row">
               <div className="tr-left">
                 <div className="tr-icon" style={{ background: catColor }}>
-                  {(test.exam || "TST").slice(0, 3).toUpperCase()}
+                  <img src={catIcon} alt={test.exam} width={34} height={34} />
                 </div>
                 <div className="tr-info">
                   <div className="tr-title">{test.title}</div>
