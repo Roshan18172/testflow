@@ -1144,11 +1144,11 @@ button { cursor: pointer; border: none; background: none; font-family: inherit; 
   color: rgba(255,255,255,0.75);
 }
 .footer-main {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 56px 24px 40px;
   display: grid;
-  grid-template-columns: 1.5fr repeat(3, 1fr);
+  grid-template-columns: 1.5fr repeat(4, 1fr);
   gap: 40px;
 }
 .footer-brand { display: flex; flex-direction: column; gap: 14px; }

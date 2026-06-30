@@ -1,8 +1,52 @@
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 // import Setulogo from "../SetuLearn Logo.png";
+import {Telegram, Youtube, Instagram, Twitter} from "iconoir-react";
 
 export default function Footer() {
   const navigate = useNavigate();
+
+ const examCategories = [
+  {
+    label: "Engineering (JEE, BITSAT)",
+    value: "Engineering Entrances",
+  },
+  {
+    label: "Medical (NEET, AIIMS)",
+    value: "Medical Entrances",
+  },
+  {
+    label: "Management (CAT)",
+    value: "Management Entrances",
+  },
+  {
+    label: "Higher Education & Research (GATE, CUET)",
+    value: "Higher Education & Research",
+  },
+  {
+    label: "Staff Selection (CGL, CHSL)",
+    value: "Staff Selection",
+  },
+  {
+    label: "Banking & Insurance (IBPS, SBI PO)",
+    value: "Banking & Insurance",
+  },
+  {
+    label: "Railways Recruitment (RRB NTPC)",
+    value: "Railways Recruitment",
+  },
+  {
+    label: "Civil Services & Bureaucracy",
+    value: "Civil Services & Bureaucracy",
+  },
+  {
+    label: "Defense Services (NDA, CDS)",
+    value: "Defense Services",
+  },
+  {
+    label: "Teaching Eligibility (NET, CTET)",
+    value: "Teaching Eligibility",
+  },
+];
   return (
     <footer className="footer">
       <div className="footer-main">
@@ -16,21 +60,51 @@ export default function Footer() {
             Practice. Improve. Succeed. Your all-in-one platform for government and entrance exam preparation.
           </p>
           <div className="footer-socials">
-            <a href="/" className="social-btn" aria-label="Twitter">𝕏</a>
-            <a href="/" className="social-btn" aria-label="Instagram">📸</a>
-            <a href="/" className="social-btn" aria-label="YouTube">▶</a>
-            <a href="/" className="social-btn" aria-label="Telegram">✈</a>
+            <a href="/" className="social-btn" aria-label="Twitter"><Twitter color="#2d589a" width={20} height={20} /></a>
+            <a href="/" className="social-btn" aria-label="Instagram"><Instagram color="#c41076" width={20} height={20} /></a>
+            <a href="/" className="social-btn" aria-label="YouTube"><Youtube color="#da1010" width={20} height={20} /></a>
+            <a href="/" className="social-btn" aria-label="Telegram"><Telegram color="#418abf" width={20} height={20} /></a>
           </div>
         </div>
 
         <div className="footer-col">
           <h4>Exam Categories</h4>
           <ul>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate("/tests"); }}>Engineering (JEE, BITSAT)</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate("/tests"); }}>Medical (NEET, AIIMS)</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate("/tests"); }}>Government (UPSC, SSC)</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate("/tests"); }}>Banking & Railways</a></li>
-            <li><a href="/" onClick={(e) => { e.preventDefault(); navigate("/tests"); }}>College Entrance (CUET)</a></li>
+             {examCategories.slice(0, 4).map((exam) => (
+              <li key={exam.value}>
+                <a
+                  href="/"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/tests", {
+                      state: { selectedExam: exam.value },
+                    });
+                  }}
+                >
+                  {exam.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="footer-col">
+          
+          <ul>
+              {examCategories.slice(4).map((exam) => (
+              <li key={exam.value}>
+                <a
+                  href="/"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    navigate("/tests", {
+                      state: { selectedExam: exam.value },
+                    });
+                  }}
+                >
+                  {exam.label}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -67,7 +141,7 @@ export default function Footer() {
           <span className="fs-lbl">Students</span>
         </div>
         <div className="footer-stat">
-          <span className="fs-num">4</span>
+          <span className="fs-num">{examCategories.length}</span>
           <span className="fs-lbl">Exam Categories</span>
         </div>
         <div className="footer-stat">
