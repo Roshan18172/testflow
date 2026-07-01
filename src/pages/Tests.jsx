@@ -182,7 +182,7 @@ export default function Tests() {
             <div key={exam.id} className="test-row">
               <div className="tr-left">
                 <div className="tr-icon" style={{ background: catColor }}>
-                  {exam.examName.slice(0, 3).toUpperCase()}
+                  {exam.examName.slice(0, 3).toUpperCase()} 
                 </div>
                 <div className="tr-info">
                   <div className="tr-title">{exam.examName} Master Test</div>
