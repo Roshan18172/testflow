@@ -7,7 +7,7 @@ import { getErrorMessage } from "../api/apiErrorHandler";
 
 export default function Exams() {
   const navigate = useNavigate();
-  
+
   // State for raw data and aggregated exams  
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -44,7 +44,7 @@ export default function Exams() {
   }, []);
 
 
-   // Show loading state
+  // Show loading state
   if (isLoading) {
     return (
       <div className="tests-page">
@@ -90,12 +90,18 @@ export default function Exams() {
 
       {/* Exams Render List */}
       <div className="all-categories-grid">
-        {categories.map((cat) => {          
+        {categories.map((cat) => {
           return (
             <div
               key={cat.id}
               className="category-card"
-              onClick={() => navigate(`/exams/${cat.id}/tests`)}
+              onClick={() =>
+                navigate("/tests", {
+                  state: {
+                    selectedExam: cat.name,
+                  },
+                })
+              }
               style={{ "--cat-color": cat.color }}
             >
               <div className="cat-icon">

@@ -1,25 +1,41 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import examService from "../api/examService";
+import { mapExamToCategory, mapTestToFrontend } from "../api/dataMapper";
+import { getErrorMessage } from "../api/apiErrorHandler";
 
 const difficulties = ["All Difficulty", "Easy", "Medium", "Hard"];
 const durations = ["All Duration", "< 60 Mins", "60-120 Mins", "> 120 Mins"];
 
 export default function Tests() {
   const navigate = useNavigate();
-  
-  // State for raw data and aggregated exams
-  const [exams, setExams] = useState([]);
+  const location = useLocation();
+
+  const [tests, setTests] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
-  // Filter and Search States
-  const [catFilter, setCatFilter] = useState("All Categories");
+  const [fetchError, setFetchError] = useState(null);
+
+  // Filters
+  const [examFilter, setExamFilter] = useState(
+    location.state?.selectedExam || "All Exams"
+  );
   const [diffFilter, setDiffFilter] = useState("All Difficulty");
   const [durFilter, setDurFilter] = useState("All Duration");
-  const [fetchError, setFetchError] = useState(null);
   const [search, setSearch] = useState("");
-  const [visible, setVisible] = useState(4);
+  const [visible, setVisible] = useState(6);
 
-  document.title = "Exams - SetuLearn";
+  document.title = "Tests - SetuLearn";
+  useEffect(() => {
+    if (location.state?.selectedExam) {
+      setExamFilter(location.state.selectedExam);
+
+      navigate(location.pathname, {
+        replace: true,
+        state: {},
+      });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -27,65 +43,35 @@ export default function Tests() {
         setIsLoading(true);
         setFetchError(null);
 
-        // 1. Fetch categories/exams definitions
-        const examsResponse = await fetch("https://setulearn-backend.onrender.com/api/v1/exams");
-        const examsJson = await examsResponse.json();
-        
-        const staticColors = ["#6C63FF", "#00C49F", "#FFBB28", "#FF8042"];
-        const mappedCategories = examsJson.data.map((exam, index) => ({
-          id: exam.id,
-          name: exam.name,
-          color: staticColors[index % staticColors.length]
-        }));
+        const [exams, rawTests] = await Promise.all([
+          examService.getExams(),
+          examService.getAllTests(),
+        ]);
+
+        // Build exam lookup by id for fast name resolution
+        const examMap = Object.fromEntries(
+          exams.map((e) => [String(e.id), e.name])
+        );
+
+        const mappedCategories = exams.map((e) => mapExamToCategory(e));
         setCategories(mappedCategories);
 
-        // 2. Fetch all individual tests to aggregate them by Exam
-        const testsResponse = await fetch("https://setulearn-backend.onrender.com/api/v1/tests");
-        const testsJson = await testsResponse.json();
-        
-        // Group individual component tests by their Parent Exam ID
-        const examGroups = {};
-
-        testsJson.data.forEach((test) => {
-          const examId = test.examId || test.exam?.id;
-          if (!examId) return;
-
-          if (!examGroups[examId]) {
-            examGroups[examId] = {
-              id: examId,
-              examName: test.exam?.name || "Unknown Exam",
-              category: test.exam?.name || "Uncategorized",
-              questions: 0,
-              duration: 0,
-              marks: 0,
-              highestDifficulty: "MEDIUM", 
-              subTests: [] // Holds all test parts (e.g., Reasoning, Quant, etc.)
-            };
-          }
-
-          // Accumulate test properties to reflect the total master Exam requirements
-          examGroups[examId].questions += test.totalQuestions || 0;
-          examGroups[examId].duration += test.durationMinutes || 0;
-          examGroups[examId].marks += test.totalMarks || 0;
-          examGroups[examId].subTests.push(test);
-          
-          if (test.difficulty === "HARD") {
-            examGroups[examId].highestDifficulty = "HARD";
-          }
+        // Map each individual test, resolving exam name from flat examId or nested exam object
+        const mappedTests = rawTests.map((t) => {
+          const examName =
+            t.exam?.name ||
+            examMap[String(t.examId)] ||
+            examMap[String(t.exam_id)] ||
+            "";
+          return mapTestToFrontend(t, examName);
         });
 
-        // Convert grouped object back to a structured array for UI rendering
-        const aggregatedExams = Object.values(examGroups).map((exam) => ({
-          ...exam,
-          difficulty: exam.highestDifficulty.charAt(0) + exam.highestDifficulty.slice(1).toLowerCase(),
-          attemptedBy: Math.floor(Math.random() * 3000) + 4000, 
-          avgScore: Math.floor(Math.random() * 10) + 70 
-        }));
-
-        setExams(aggregatedExams);
-      } catch (error) {
-        console.error("Error aggregating exam data:", error);
-        setFetchError("Failed to load exam data. Please try again.");
+        setTests(mappedTests);
+      } catch (err) {
+        console.error("Failed to fetch tests:", err);
+        setFetchError(
+          getErrorMessage(err, "Could not load tests. Please make sure the backend is running.")
+        );
       } finally {
         setIsLoading(false);
       }
@@ -94,21 +80,24 @@ export default function Tests() {
     fetchData();
   }, []);
 
-  // Filter Operations on aggregate Exams
-  const filtered = exams.filter((e) => {
-    const matchCat = catFilter === "All Categories" || e.category === catFilter;
-    const matchDiff = diffFilter === "All Difficulty" || e.difficulty === diffFilter;
+  const resetVisible = () => setVisible(8);
+
+  const filtered = tests.filter((t) => {
+    const matchExam = examFilter === "All Exams" || t.exam === examFilter;
+    const matchDiff =
+      diffFilter === "All Difficulty" || t.difficulty === diffFilter;
     const matchDur =
       durFilter === "All Duration" ||
-      (durFilter === "< 60 Mins" && e.duration < 60) ||
-      (durFilter === "60-120 Mins" && e.duration >= 60 && e.duration <= 120) ||
-      (durFilter === "> 120 Mins" && e.duration > 120);
+      (durFilter === "< 60 Mins" && t.duration < 60) ||
+      (durFilter === "60-120 Mins" && t.duration >= 60 && t.duration <= 120) ||
+      (durFilter === "> 120 Mins" && t.duration > 120);
     const matchSearch =
-      search === "" || e.examName.toLowerCase().includes(search.toLowerCase());
-    return matchCat && matchDiff && matchDur && matchSearch;
+      search === "" ||
+      t.title.toLowerCase().includes(search.toLowerCase()) ||
+      t.exam.toLowerCase().includes(search.toLowerCase());
+    return matchExam && matchDiff && matchDur && matchSearch;
   });
 
-   // Show loading state
   if (isLoading) {
     return (
       <div className="tests-page">
@@ -124,7 +113,6 @@ export default function Tests() {
     );
   }
 
-  // Show error state with retry
   if (fetchError) {
     return (
       <div className="tests-page">
@@ -146,72 +134,92 @@ export default function Tests() {
   return (
     <div className="tests-page">
       <div className="tests-header">
-        <h1>All Exams</h1>
-        <p>{filtered.length} exams available</p>
+        <h1>All Tests</h1>
+        <p>{filtered.length} test{filtered.length !== 1 ? "s" : ""} available</p>
       </div>
 
       {/* Filters bar */}
       <div className="filters-bar">
         <div className="filter-group">
-          <select value={catFilter} onChange={(e) => { setCatFilter(e.target.value); setVisible(4); }}>
-            <option>All Categories</option>
-            {categories.map((c) => <option key={c.id}>{c.name}</option>)}
+          {/* Exam name filter — replaces the old category filter */}
+          <select
+            value={examFilter}
+            onChange={(e) => { setExamFilter(e.target.value); resetVisible(); }}
+          >
+            <option>All Exams</option>
+            {categories.map((c) => (
+              <option key={c.id}>{c.name}</option>
+            ))}
           </select>
 
-          <select value={diffFilter} onChange={(e) => { setDiffFilter(e.target.value); setVisible(4); }}>
+          <select
+            value={diffFilter}
+            onChange={(e) => { setDiffFilter(e.target.value); resetVisible(); }}
+          >
             {difficulties.map((d) => <option key={d}>{d}</option>)}
           </select>
 
-          <select value={durFilter} onChange={(e) => { setDurFilter(e.target.value); setVisible(4); }}>
+          <select
+            value={durFilter}
+            onChange={(e) => { setDurFilter(e.target.value); resetVisible(); }}
+          >
             {durations.map((d) => <option key={d}>{d}</option>)}
           </select>
         </div>
 
         <div className="search-box">
           <span className="search-icon">🔍</span>
-          <input type="text" placeholder="Search exams..." value={search}
-            onChange={(e) => { setSearch(e.target.value); setVisible(4); }} />
+          <input
+            type="text"
+            placeholder="Search tests..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); resetVisible(); }}
+          />
         </div>
       </div>
 
-      {/* Exams Render List */}
+      {/* Tests list */}
       <div className="tests-list-page">
-        {filtered.slice(0, visible).map((exam) => {
-          const catColor = categories.find((c) => c.name === exam.category)?.color || "#6C63FF";
+        {filtered.slice(0, visible).map((test) => {
+          const category = categories.find((c) => c.name === test.exam);
+          const catColor = category?.color || "#6C63FF";
+          const catIcon = category?.icon || "/icons/default.png";
           return (
-            <div key={exam.id} className="test-row">
+            <div key={test.id} className="test-row">
               <div className="tr-left">
                 <div className="tr-icon" style={{ background: catColor }}>
-                  {exam.examName.slice(0, 3).toUpperCase()} 
+                  <img src={catIcon} alt={test.exam} width={34} height={34} />
                 </div>
                 <div className="tr-info">
-                  <div className="tr-title">{exam.examName} Master Test</div>
-                  
+                  <div className="tr-title">{test.title}</div>
                   <div className="tr-meta">
-                    <span className="tr-cat">
-                      {exam.subTests.length} Combined Papers
+                    <span className="tr-cat">{test.exam}</span>
+                    <span>•</span>
+                    <span>{test.questions} Questions</span>
+                    <span>•</span>
+                    <span>{test.duration} Mins</span>
+                    <span>•</span>
+                    <span className={`diff-badge ${test.difficulty.toLowerCase()}`}>
+                      {test.difficulty}
                     </span>
-                    <span>•</span>
-                    <span>{exam.questions} Total Questions</span>
-                    <span>•</span>
-                    <span>{exam.duration} Mins Total</span>
-                    <span>•</span>
-                    <span className={`diff-badge ${exam.difficulty.toLowerCase()}`}>{exam.difficulty}</span>
                   </div>
-                  
                   <div className="tr-sub-info">
-                    <span>📊 {exam.attemptedBy.toLocaleString()} attempted</span>
-                    <span>•</span>
-                    <span>Avg Score: {exam.avgScore}%</span>
-                    <span>•</span>
-                    <span>Total Marks: {exam.marks}</span>
+                    <span>Total Marks: {test.marks}</span>
+                    {test.negativeMarking && (
+                      <>
+                        <span>•</span>
+                        <span>Negative Marking</span>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
-              
-              <button 
+
+              <button
                 className="btn-primary"
-                onClick={() => navigate("/instructions", { state: { test: exam, mode: "master_timed" } })}
+                onClick={() =>
+                  navigate("/instructions", { state: { test, mode: "timed" } })
+                }
               >
                 Start Test
               </button>
@@ -222,7 +230,7 @@ export default function Tests() {
         {filtered.length === 0 && (
           <div className="empty-state">
             <div className="empty-icon">🔍</div>
-            <h3>No exams found</h3>
+            <h3>No tests found</h3>
             <p>Try adjusting your filters or search query.</p>
           </div>
         )}
@@ -230,8 +238,8 @@ export default function Tests() {
 
       {visible < filtered.length && (
         <div className="load-more-wrap">
-          <button className="btn-outline" onClick={() => setVisible((v) => v + 4)}>
-            Load More Exams
+          <button className="btn-outline" onClick={() => setVisible((v) => v + 6)}>
+            Load More Tests
           </button>
         </div>
       )}
